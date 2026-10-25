@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local environments and IDE settings
+.venv/
+.venv-gpu/
+venv/
+env/
+original_project/
+.idea/
+.vscode/
+
+# Local datasets, caches and generated runs
+data/
+assets/
+prepared/
+runs/
+reports/
+work/
+*.pt
+*.pth
+*.h5
+*.onnx
+*.log
+
+# Local distribution copies
+github_release/
+GestureRecognition-source.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

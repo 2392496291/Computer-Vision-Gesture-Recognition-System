@@ -1,0 +1,31 @@
+{
+  "seed": 42,
+  "training_epochs": 50,
+  "input_size": [
+    64,
+    64
+  ],
+  "split_sizes": {
+    "train": 19409,
+    "val": 6470,
+    "test": 6469
+  },
+  "preprocessing": "OpenCV grayscale repeated to three channels, resize, ImageNet normalisation",
+  "augmentation": "horizontal flip probability 0.3, rotation +/-10 degrees",
+  "optimizer": "Adam",
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "pretrained": false,
+  "selection_metric": "validation Macro-F1",
+  "fusion_threshold": 0.95,
+  "threshold_selection_split": "validation",
+  "detection_rate": 0.9816045756685732,
+  "classification_mAP_definition": "one-vs-rest AP averaged across classes; no detection IoU threshold",
+  "fusion_score_definition": "CNN probability if selected; one-hot class score for rule override; not calibrated probability",
+  "limitations": [
+    "Single seed; no uncertainty estimate.",
+    "Plain CNN and ResNeXt50 are different backbone architectures.",
+    "Exact pixel duplicates removed; subject-disjoint and near-duplicate splits not verified.",
+    "No dedicated illumination or occlusion benchmark."
+  ]
+}
