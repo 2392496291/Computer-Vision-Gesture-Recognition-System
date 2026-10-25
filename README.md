@@ -1,39 +1,169 @@
+<div align="center">
+
 # Hand Gesture Recognition
 
-基于 OpenCV、MediaPipe Hands 和 PyTorch 的静态手势识别系统，支持数字 0–8 和 OK 共 10 类手势，提供图片、视频和摄像头演示。
+### 基于 MediaPipe · OpenCV · PyTorch 的手势识别系统
 
-## 方法
+识别 **0–8 和 OK** 共 10 类静态手势，支持图片、视频与摄像头输入。
 
-- **Plain CNN**：五个卷积阶段组成的基线网络。
-- **ResNeXt50**：使用 torchvision 的 ResNeXt-50 32×4d，保留完整骨干。
-- **ResNeXt50 + DenseBlocks**：在骨干特征图后增加投影层、两个 DenseBlock 和分类头。每个 DenseBlock 包含 4 层，增长率为 32。
-- **MediaPipe 裁剪**：通过手部关键点确定裁剪框；检测失败时使用原图回退，并另报告将漏检视为拒识的结果。
-- **规则融合**：根据关键点判断手势，在 CNN 置信度低于阈值时使用有效的规则结果。阈值仅在验证集上选择。
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.7.1-EE4C2C?logo=pytorch&logoColor=white)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.21-0097A7)
+![CUDA](https://img.shields.io/badge/CUDA-12.8-76B900?logo=nvidia&logoColor=white)
 
-CNN 输入为图像。21 个三维关键点用于手部定位与几何规则，不作为特征向量输入 CNN。视频模式逐帧识别静态手形，不包含动作时序分类。
+[快速开始](#快速开始) · [系统流程](#系统流程) · [实验结果](#实验结果) · [训练与评估](#训练与评估) · [项目结构](#项目结构)
 
-## 环境
+</div>
 
-使用 Python 3.11。以下命令面向 Windows 和支持 CUDA 的 NVIDIA 显卡：
+## 项目概览
+
+项目将手部关键点定位与图像分类结合：MediaPipe 提取手部关键点并确定裁剪区域，CNN 预测手势类别，再根据验证集选出的置信度阈值选择 CNN 或几何规则结果。
+
+| 功能 | 说明 |
+| :--- | :--- |
+| 图片识别 | 读取单张图片，显示手部框、关键点和类别 |
+| 视频识别 | 对视频逐帧识别，支持停止和切换输入 |
+| 摄像头识别 | 实时采集与识别，推理在独立工作线程中执行 |
+| 模型对比 | Plain CNN、ResNeXt50、ResNeXt50 + DenseBlocks |
+| 完整流程评估 | 比较原图、手部裁剪、关键点规则与结果融合 |
+| 数据与权重 | 提供数据划分、四组训练权重和实验结果 |
+
+> 视频模式识别每一帧中的静态手形，不包含动态动作的时序建模。CNN 的输入为图片；关键点用于定位与几何规则。
+
+## 界面预览
+
+![手势识别界面](docs/images/interface.png)
+
+*使用已训练模型进行图片识别的实际界面。顶部可选择模型、输入来源和融合阈值。*
+
+## 快速开始
+
+### 1. 获取项目
+
+```powershell
+git clone https://github.com/2392496291/Computer-Vision-Gesture-Recognition-System.git
+cd Computer-Vision-Gesture-Recognition-System
+```
+
+仓库包含数据与模型权重，下载体积较大。虚拟环境和预处理缓存不包含在仓库中。
+
+### 2. 安装依赖
+
+使用 **Python 3.11**。以下示例面向 Windows 与 NVIDIA GPU，所有命令在项目根目录执行：
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -B check_environment.py --require-cuda
+$py = '.\.venv\Scripts\python.exe'
+& $py -m pip install -r requirements.txt
+& $py -B check_environment.py --require-cuda
 ```
 
-依赖使用 PyTorch 2.7.1、torchvision 0.22.1、CUDA 12.8 构建和 MediaPipe 0.10.21。CPU 运行时可单独安装匹配的 CPU 版 PyTorch/torchvision，再安装 `requirements-gpu.txt` 中的通用依赖，并使用 `--device cpu`。
+<details>
+<summary><b>没有 NVIDIA GPU：使用 CPU 环境</b></summary>
 
-结构与 CUDA 检查：
+在已创建的环境中安装 CPU 版本 PyTorch，再安装通用依赖：
 
 ```powershell
-python verify.py
-python verify_gpu.py
+& $py -m pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cpu
+& $py -m pip install -r requirements-gpu.txt
+& $py -B check_environment.py
 ```
 
-## 数据
+CPU 模式运行时使用 `--device cpu`。`requirements-gpu.txt` 包含 OpenCV、MediaPipe 等通用依赖；PyTorch 构建版本由上述命令单独选择。
 
-仓库包含 data/dataset_split 中的原始划分图片、weights 中的四组最佳模型权重和 assets 中的演示素材。虚拟环境与预处理缓存不包含在仓库中。数据结构如下：
+</details>
+
+### 3. 启动识别
+
+```powershell
+& $py app.py
+```
+
+默认加载 `weights/resnext50_dense_mp.pt` 和 `weights/fusion.json`，无需先训练模型。
+
+| 界面按钮 | 操作 |
+| :--- | :--- |
+| **Image** | 选择图片 |
+| **Video** | 选择视频 |
+| **Camera** | 打开摄像头 |
+| **Stop** | 停止当前输入 |
+| **Checkpoint** | 切换模型权重 |
+
+融合阈值默认为 **0.95**，由验证集选择。调整界面阈值后，从下一次启动输入时生效。
+
+## 系统流程
+
+```mermaid
+flowchart TD
+    A[图片 / 视频帧 / 摄像头] --> B[MediaPipe Hands]
+    B --> C[21 个手部关键点]
+    C --> D[手部区域裁剪]
+    C --> E[几何规则分类]
+    D --> F[灰度化 / 缩放 / 归一化]
+    F --> G[ResNeXt50 + DenseBlocks]
+    G --> H{CNN 置信度达到阈值?}
+    H -- 是 --> I[CNN 预测]
+    H -- 否 --> J[有效规则结果]
+    E --> J
+    I --> K[显示类别、位置与关键点]
+    J --> K
+    B -. 未检测到手部 .-> L[使用原图进行 CNN 回退]
+    L --> K
+```
+
+规则无有效结果时保留 CNN 预测。评估中同时报告“原图回退”和“漏检直接拒识”两种策略，避免只统计成功检测的样本。
+
+### 网络结构
+
+| 模型 | 实现 |
+| :--- | :--- |
+| **Plain CNN** | 五个卷积阶段组成的基线网络 |
+| **ResNeXt50** | torchvision ResNeXt-50 32×4d，保留完整骨干与分组卷积 |
+| **ResNeXt50 + DenseBlocks** | 骨干后接投影层、两个 DenseBlock 与分类头；每块 4 层，增长率 32 |
+
+Plain CNN 与 ResNeXt50 是不同骨干的模型对比；ResNeXt50 与增加 DenseBlocks 的版本用于检验新增模块的影响。
+
+## 实验结果
+
+**测试条件：**随机种子 42 · 从头训练 · 50 轮 · 相同数据划分。表中指标单位均为 **%**。
+
+| Model / Pipeline | Accuracy | Macro Precision | Macro Recall | Macro F1 | mAP |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| Plain CNN / original | **98.75** | 96.58 | 94.76 | **95.61** | **97.15** |
+| ResNeXt50 / original | 98.30 | 93.97 | 93.20 | 93.57 | 96.15 |
+| ResNeXt50 + DenseBlocks / original | 98.36 | 94.28 | 94.29 | 94.13 | 95.48 |
+| MediaPipe crop + CNN / fallback | 98.41 | 94.65 | 93.89 | 94.24 | 96.64 |
+| MediaPipe crop + CNN / strict rejection | 97.33 | **96.60** | 92.25 | 94.26 | 94.82 |
+| CNN + landmark-rule fusion / fallback | 98.58 | 94.29 | **94.95** | 94.60 | 94.27 |
+| Landmark rules | 71.57 | 87.93 | 68.87 | 72.75 | 61.70 |
+
+完整数值、逐类指标和混淆矩阵保存在 **[results/](results/)**。
+
+- 本次测试中，Plain CNN 的整体表现较好。
+- 对最终网络使用手部裁剪后，分类 mAP 从 **95.48%** 提高到 **96.64%**。
+- 在裁剪方案上加入规则融合后，Accuracy 从 **98.41%** 提高到 **98.58%**，Macro-F1 从 **94.24%** 提高到 **94.60%**，但分类 mAP 下降。
+
+<details>
+<summary><b>指标定义与实验范围</b></summary>
+
+- **Accuracy**：全部测试样本中预测正确的比例。
+- **Macro Precision / Recall / F1**：逐类计算后等权平均，用于观察类别不平衡下的整体表现。
+- **分类 mAP**：逐类 one-vs-rest AP 的均值，不使用检测框 IoU 阈值，不等同于检测 mAP@0.5。
+- **融合分数**：CNN 被选中时使用其概率，规则覆盖时使用 one-hot 分数；该分数不是校准置信度。
+- 当前为单个随机种子的结果，尚无重复实验的方差估计，也未进行专门的光照或遮挡分组评估。
+- 已清理像素完全相同的重复图片；尚未验证近重复或采集者跨集合的情况。
+
+</details>
+
+## 数据与权重
+
+### 数据划分
+
+原始标注图片 **32,355 张**，清理重复和标签冲突后保留 **32,348 张**：
+
+| 训练集 | 验证集 | 测试集 | 类别 |
+| :---: | :---: | :---: | :---: |
+| 19,409 | 6,470 | 6,469 | 0–8、OK |
 
 ```text
 data/dataset_split/
@@ -48,99 +178,104 @@ data/dataset_split/
     └── OK/
 ```
 
-准备数据并缓存手部裁剪：
+类别数量不均衡。数据准备仅调整训练清单，不删除原图片；冲突与排除记录保存在 `prepared/audit.json`。
 
-```powershell
-python prepare_data.py --clean-duplicates
-```
+### 模型权重
 
-也可用 `--data <目录>` 指定数据源。清理只调整训练清单，不删除原图片：像素相同且标签冲突的图片全部排除；同标签重复图片保留一份。逐图排除记录在 `prepared/audit.json`。
+以下为本项目从头训练得到的权重，不是 ImageNet 初始化权重：
 
-当前实验原始图片数为 32,355，清理后为 32,348，划分为训练 19,409、验证 6,470、测试 6,469 张。各类数量不均衡。像素去重不能排除近重复或同一采集者跨集合的问题。
+| 文件 | 模型 / 输入 |
+| :--- | :--- |
+| `weights/plain_cnn.pt` | Plain CNN / 原图 |
+| `weights/resnext50.pt` | ResNeXt50 / 原图 |
+| `weights/resnext50_dense_raw.pt` | ResNeXt50 + DenseBlocks / 原图 |
+| `weights/resnext50_dense_mp.pt` | ResNeXt50 + DenseBlocks / 手部裁剪 |
+| `weights/fusion.json` | 默认融合阈值与模型配置 |
 
 ## 训练与评估
 
-一键运行种子 42 的四组训练、融合评估和汇总：
+### 一键完成实验
+
+准备裁剪缓存、运行四组训练、选择融合阈值并汇总：
 
 ```powershell
-python run_all.py --seed 42 --epochs 50 --batch-size 32 --device cuda
+& $py run_all.py --seed 42 --epochs 50 --batch-size 32 --device cuda
 ```
 
-或者逐项执行：
+已有设置一致的完整实验会被跳过。预处理缓存不存在时自动生成。
+
+<details>
+<summary><b>分步运行命令</b></summary>
 
 ```powershell
-python train.py --model plain_cnn --view raw --seed 42 --device cuda
-python train.py --model resnext50 --view raw --seed 42 --device cuda
-python train.py --model resnext50_dense --view raw --seed 42 --device cuda
-python train.py --model resnext50_dense --view mp --seed 42 --device cuda
+# 数据检查与手部裁剪缓存：首次运行
+& $py prepare_data.py --clean-duplicates
 
-python evaluate_pipeline.py --checkpoint runs/resnext50_dense_mp_seed42/best.pt --raw-checkpoint runs/resnext50_dense_raw_seed42/best.pt --output reports/pipeline_seed42 --device cuda
-python summarize.py
+# 四组模型训练
+& $py train.py --model plain_cnn --view raw --seed 42 --device cuda
+& $py train.py --model resnext50 --view raw --seed 42 --device cuda
+& $py train.py --model resnext50_dense --view raw --seed 42 --device cuda
+& $py train.py --model resnext50_dense --view mp --seed 42 --device cuda
+
+# 完整流程评估与汇总
+& $py evaluate_pipeline.py --checkpoint runs/resnext50_dense_mp_seed42/best.pt --raw-checkpoint runs/resnext50_dense_raw_seed42/best.pt --output reports/pipeline_seed42 --device cuda
+& $py summarize.py
 ```
 
-默认训练 50 轮，使用交叉熵损失、Adam、初始学习率 0.001 和 batch size 32，从头训练。图像灰度化后复制为三通道并调整至 64×64；训练增强为 30% 概率水平翻转及 ±10° 旋转。按验证集 Macro-F1 保存最佳权重，测试前重新加载。
+`prepare_data.py` 不会覆盖已有清单。修改实验设置或重新运行已有模型时，指定新的 `--output`。
 
-`run_all.py` 会准备缺失的数据缓存并跳过设置一致的已完成实验。单独运行 `prepare_data.py` 时不会覆盖已有清单。修改实验设置或重新训练已有模型时，使用新的 `--output`，避免覆盖记录。
+</details>
 
-`run_experiments.ps1` 可运行多个种子；解释器由已激活环境中的 `python` 或 `-Python` 参数指定。
+### 训练设置
 
-## 实验结果
+| 项目 | 设置 |
+| :--- | :--- |
+| 输入 | 64×64；灰度图复制为三通道 |
+| 数据增强 | 30% 概率水平翻转、±10° 随机旋转 |
+| 损失 / 优化器 | Cross-Entropy / Adam |
+| 初始学习率 / Batch size | 0.001 / 32 |
+| 权重选择 | 验证集 Macro-F1 最佳模型 |
+| 测试 | 重新加载最佳权重后评估 |
+| 融合阈值 | 只在验证集选择 |
 
-以下为种子 42、相同数据划分下的单次测试结果，均为百分比：
+### 本地输出
 
-| 模型 / 方案 | Accuracy | Macro Precision | Macro Recall | Macro F1 | 分类 mAP |
-|---|---:|---:|---:|---:|---:|
-| Plain CNN，原图 | 98.75 | 96.58 | 94.76 | 95.61 | 97.15 |
-| ResNeXt50，原图 | 98.30 | 93.97 | 93.20 | 93.57 | 96.15 |
-| ResNeXt50 + DenseBlocks，原图 | 98.36 | 94.28 | 94.29 | 94.13 | 95.48 |
-| ResNeXt50 + DenseBlocks，裁剪及原图回退 | 98.41 | 94.65 | 93.89 | 94.24 | 96.64 |
-| CNN 与规则融合，含原图回退 | 98.58 | 94.29 | 94.95 | 94.60 | 94.27 |
-| 关键点规则 | 71.57 | 87.93 | 68.87 | 72.75 | 61.70 |
-
-本次实验中 Plain CNN 的整体指标最高。裁剪提高了最终网络的分类 mAP；规则融合提高 Accuracy 和 Macro-F1，但降低分类 mAP。单个随机种子不足以判断差异是否稳定，未进行专门的遮挡或光照分组评估。
-
-Plain CNN 与 ResNeXt50 属于不同骨干的对比；ResNeXt50 与增加 DenseBlocks 的版本用于检验新增模块的影响。
-
-分类 mAP 为逐类 one-vs-rest AP 的均值，不使用检测框 IoU 阈值。规则覆盖时使用 one-hot 分数，其余使用 CNN 概率，融合分数不属于校准置信度。
-
-完整数值与每类结果见 [results](results/)。四组最佳权重保存在 [weights](weights/)。本地训练记录保存在 runs/，流程评估保存在 reports/，不纳入 Git。
-
-## 演示
-
-安装依赖后可直接启动，无需重新训练：
-
-```powershell
-python app.py
+```text
+prepared/                  # 数据清单、审计记录、手部裁剪缓存
+runs/<model>_<view>_seed42/
+├── best.pt                # 最佳权重
+├── config.json            # 实验配置
+├── history.csv            # 逐轮记录
+└── test_metrics.json      # 测试指标与混淆矩阵
+reports/
+├── pipeline_seed42/       # 完整流程评估与逐图预测
+└── comparison/            # 模型与流程结果汇总
 ```
 
-默认加载 weights/resnext50_dense_mp.pt 与 weights/fusion.json（验证集选择阈值 0.95）。点击 Camera、Image 或 Video 选择输入，也可用界面的 Checkpoint 按钮切换模型。
+## 项目结构
 
-使用自行训练的权重与配置时：
-
-```powershell
-python app.py --fusion-config reports/pipeline_seed42/fusion_config.json --device cuda
+```text
+.
+├── app.py                 # 图片、视频与摄像头界面
+├── models.py              # CNN、ResNeXt50、DenseBlocks
+├── hands.py               # MediaPipe 定位与几何规则
+├── inference.py           # 权重加载与结果融合
+├── common.py              # 预处理与数据加载
+├── prepare_data.py        # 数据审计和裁剪缓存
+├── train.py               # 训练与测试
+├── metrics.py             # 分类评价指标
+├── evaluate_pipeline.py   # 验证集选阈值与流程评估
+├── summarize.py           # 实验汇总
+├── run_all.py             # 实验入口
+├── data/dataset_split/    # 数据划分
+├── weights/               # 已训练模型
+├── assets/                # 演示素材
+├── results/               # 公开实验结果
+└── docs/images/           # 界面截图
 ```
-
-界面支持图片、视频和摄像头。推理在工作线程中执行，展示手部框、关键点、识别结果和真实 CNN 置信度。
-
-## 主要文件
-
-| 文件 | 功能 |
-|---|---|
-| `models.py` | 三种图像分类网络 |
-| `common.py` | 图像预处理和数据加载 |
-| `hands.py` | 手部定位、几何归一化和规则 |
-| `prepare_data.py` | 数据审计与裁剪缓存 |
-| `train.py` | 训练、最佳权重选择与测试 |
-| `metrics.py` | 分类指标和混淆矩阵 |
-| `inference.py` | 模型加载及融合 |
-| `evaluate_pipeline.py` | 阈值选择与完整流程评估 |
-| `summarize.py` | 实验结果汇总 |
-| `run_all.py` | 实验入口 |
-| `app.py` | Qt 演示界面 |
 
 ## 参考实现
 
-- [torchvision ResNeXt50](https://docs.pytorch.org/vision/0.19/models/generated/torchvision.models.resnext50_32x4d.html)
-- [torchvision DenseNet](https://docs.pytorch.org/vision/0.19/_modules/torchvision/models/densenet.html)
-- [MediaPipe Hands](https://chuoling.github.io/mediapipe/solutions/hands.html)
+- [torchvision · ResNeXt50](https://docs.pytorch.org/vision/0.19/models/generated/torchvision.models.resnext50_32x4d.html)
+- [torchvision · DenseNet](https://docs.pytorch.org/vision/0.19/_modules/torchvision/models/densenet.html)
+- [MediaPipe · Hands](https://chuoling.github.io/mediapipe/solutions/hands.html)
