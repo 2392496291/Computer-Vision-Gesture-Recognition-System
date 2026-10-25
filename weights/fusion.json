@@ -1,0 +1,7 @@
+{
+  "threshold": 0.95,
+  "checkpoint": "resnext50_dense_mp.pt",
+  "manifest_sha256": "fb9ef2ff09fb6c68d3aa9d72b0f3fd200675fc56dc6a04b5baa1604eb37508b5",
+  "selection_split": "val",
+  "selection_metric": "f1_macro"
+}

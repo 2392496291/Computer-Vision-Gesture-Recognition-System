@@ -118,16 +118,28 @@ class Window(QtWidgets.QMainWindow):
             self.status.setText('Stopping worker; close again once processing finishes.'); event.ignore(); return
         event.accept()
 
+def configure_startup(args, parser):
+    root=Path(__file__).resolve().parent
+    if args.fusion_config is None and args.checkpoint is None and (root/'weights'/'fusion.json').is_file():
+        args.fusion_config=root/'weights'/'fusion.json'
+    if args.fusion_config:
+        config_path=args.fusion_config.resolve()
+        config=json.loads(config_path.read_text(encoding='utf-8'))
+        args.threshold=config['threshold']
+        checkpoint=Path(config['checkpoint'])
+        if not checkpoint.is_absolute():
+            checkpoint=config_path.parent/checkpoint
+        checkpoint=checkpoint.resolve()
+        if args.checkpoint and args.checkpoint.resolve()!=checkpoint:
+            parser.error('Fusion configuration belongs to another checkpoint')
+        args.checkpoint=checkpoint
+    return args
+
 def main():
     torch.set_num_threads(4)
     p=argparse.ArgumentParser(description=__doc__); p.add_argument('--checkpoint',type=Path)
     p.add_argument('--fusion-config',type=Path); p.add_argument('--threshold',type=float,default=0.)
-    p.add_argument('--device',default='auto'); args=p.parse_args()
-    if args.fusion_config:
-        config=json.loads(args.fusion_config.read_text(encoding='utf-8')); args.threshold=config['threshold']
-        if args.checkpoint and args.checkpoint.resolve()!=Path(config['checkpoint']).resolve():
-            p.error('Fusion configuration belongs to another checkpoint')
-        args.checkpoint=Path(config['checkpoint'])
+    p.add_argument('--device',default='auto'); args=configure_startup(p.parse_args(),p)
     app=QtWidgets.QApplication(sys.argv); window=Window(args); window.show(); sys.exit(app.exec_())
 if __name__=='__main__':
     main()

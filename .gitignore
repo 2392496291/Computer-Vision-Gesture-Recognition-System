@@ -14,13 +14,13 @@ original_project/
 .vscode/
 
 # Local datasets, caches and generated runs
-data/
-assets/
+data/raw_sources/
 prepared/
 runs/
 reports/
 work/
 *.pt
+!weights/*.pt
 *.pth
 *.h5
 *.onnx

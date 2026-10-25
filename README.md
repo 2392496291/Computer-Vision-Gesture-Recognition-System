@@ -33,7 +33,7 @@ python verify_gpu.py
 
 ## 数据
 
-数据集按以下结构放置，图片和缓存不纳入 Git：
+仓库包含 data/dataset_split 中的原始划分图片、weights 中的四组最佳模型权重和 assets 中的演示素材。虚拟环境与预处理缓存不包含在仓库中。数据结构如下：
 
 ```text
 data/dataset_split/
@@ -103,11 +103,19 @@ Plain CNN 与 ResNeXt50 属于不同骨干的对比；ResNeXt50 与增加 DenseB
 
 分类 mAP 为逐类 one-vs-rest AP 的均值，不使用检测框 IoU 阈值。规则覆盖时使用 one-hot 分数，其余使用 CNN 概率，融合分数不属于校准置信度。
 
-完整数值与每类结果见 [results](results/)。本地训练记录保存在 `runs/`，流程评估保存在 `reports/`，不纳入 Git。
+完整数值与每类结果见 [results](results/)。四组最佳权重保存在 [weights](weights/)。本地训练记录保存在 runs/，流程评估保存在 reports/，不纳入 Git。
 
 ## 演示
 
-训练并评估后启动界面：
+安装依赖后可直接启动，无需重新训练：
+
+```powershell
+python app.py
+```
+
+默认加载 weights/resnext50_dense_mp.pt 与 weights/fusion.json（验证集选择阈值 0.95）。点击 Camera、Image 或 Video 选择输入，也可用界面的 Checkpoint 按钮切换模型。
+
+使用自行训练的权重与配置时：
 
 ```powershell
 python app.py --fusion-config reports/pipeline_seed42/fusion_config.json --device cuda
