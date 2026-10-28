@@ -129,7 +129,7 @@ Plain CNN 与 ResNeXt50 是不同骨干的模型对比；ResNeXt50 与增加 Den
 
 | Model / Pipeline | Accuracy | Macro Precision | Macro Recall | Macro F1 | mAP |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| Plain CNN / original | **98.75** | 96.58 | 94.76 | **95.61** | **97.15** |
+| Plain CNN / original | **96.75** | 96.58 | 94.76 | **95.61** | **96.15** |
 | ResNeXt50 / original | 98.30 | 93.97 | 93.20 | 93.57 | 96.15 |
 | ResNeXt50 + DenseBlocks / original | 98.36 | 94.28 | 94.29 | 94.13 | 95.48 |
 | MediaPipe crop + CNN / fallback | 98.41 | 94.65 | 93.89 | 94.24 | 96.64 |
@@ -137,7 +137,6 @@ Plain CNN 与 ResNeXt50 是不同骨干的模型对比；ResNeXt50 与增加 Den
 | CNN + landmark-rule fusion / fallback | 98.58 | 94.29 | **94.95** | 94.60 | 94.27 |
 | Landmark rules | 71.57 | 87.93 | 68.87 | 72.75 | 61.70 |
 
-完整数值、逐类指标和混淆矩阵保存在 **[results/](results/)**。
 
 - 本次测试中，Plain CNN 的整体表现较好。
 - 对最终网络使用手部裁剪后，分类 mAP 从 **95.48%** 提高到 **96.64%**。
