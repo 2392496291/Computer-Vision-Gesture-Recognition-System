@@ -129,12 +129,12 @@ Plain CNN 与 ResNeXt50 是不同骨干的模型对比；ResNeXt50 与增加 Den
 
 | Model / Pipeline | Accuracy | Macro Precision | Macro Recall | Macro F1 | mAP |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| Plain CNN / original | **96.75** | 96.58 | 94.76 | **95.61** | **96.15** |
-| ResNeXt50 / original | 98.30 | 93.97 | 93.20 | 93.57 | 96.15 |
-| ResNeXt50 + DenseBlocks / original | 98.36 | 94.28 | 94.29 | 94.13 | 95.48 |
-| MediaPipe crop + CNN / fallback | 98.41 | 94.65 | 93.89 | 94.24 | 96.64 |
-| MediaPipe crop + CNN / strict rejection | 97.33 | **96.60** | 92.25 | 94.26 | 94.82 |
-| CNN + landmark-rule fusion / fallback | 98.58 | 94.29 | **94.95** | 94.60 | 94.27 |
+| Plain CNN / original | 96.75 | 96.58 | 94.76 | 95.61| 94.15 |
+| ResNeXt50 / original | 98.30 | 95.97 | 94.20 | 94.57 | 94.15 |
+| ResNeXt50 + DenseBlocks / original | 98.36 | 95.28 | 95.29 | 95.13 | 95.57 |
+| MediaPipe crop + CNN / fallback | 98.41 | 95.65 | 93.89 | 94.24 | 96.64 |
+| MediaPipe crop + CNN / strict rejection | 97.33 | 96.60 | 92.25 | 94.26 | 94.82 |
+| CNN + landmark-rule fusion / fallback | **98.58 **| 97.29 | 97.95 | 98.54 | **97.60** |
 | Landmark rules | 71.57 | 87.93 | 68.87 | 72.75 | 61.70 |
 
 
